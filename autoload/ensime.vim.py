@@ -1,16 +1,129 @@
-import neovim
+import vim
 import json
+import socket
 import os
 import subprocess
 import re
+import base64
 import logging
 import time
-import datetime
 import thread
 import inspect
-from ensime_launcher import EnsimeLauncher
+from socket import error as socket_error
+from collections import defaultdict
 from websocket import create_connection
+import signal
 import Queue
+class EnsimeLauncher:
+    def __init__(self, conf_path, vim = None):
+        self.vim = vim
+        self.generating_classpath = False
+        self.classpath = None
+        self.conf_path = conf_path
+        self.version = "0.9.10-SNAPSHOT"
+        self.classpath_dir = "/tmp/classpath_project_ensime"
+        self.classpath_file = "{}/classpath".format(self.classpath_dir)
+        if os.path.exists(self.conf_path):
+            self.conf = self.parse_conf()
+    def parse_conf(self):
+        conf = self.read_file(self.conf_path).replace("\n", "").replace(
+                "(", " ").replace(")", " ").replace('"', "").split(" :")
+        pattern = re.compile("([^ ]*) *(.*)$")
+        conf = [(m[0], m[1])for m in [pattern.match(x).groups() for x in conf]]
+        result = {}
+        for item in conf:
+            result[item[0]] = item[1]
+        return result
+    def generate_classpath(self):
+        self.generating_classpath = True
+        log = None
+        classpath = None
+        if not os.path.exists(self.classpath_file):
+            if not os.path.exists(self.classpath_dir): os.mkdir(self.classpath_dir)
+            build_sbt = """
+import sbt._
+import IO._
+import java.io._
+scalaVersion := "%(scala_version)"
+ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
+// allows local builds of scala
+resolvers += Resolver.mavenLocal
+resolvers += Resolver.sonatypeRepo("snapshots")
+resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+resolvers += "Akka Repo" at "http://repo.akka.io/repository"
+libraryDependencies ++= Seq(
+  "org.ensime" %% "ensime" % "%(version)",
+  "org.scala-lang" % "scala-compiler" % scalaVersion.value force(),
+  "org.scala-lang" % "scala-reflect" % scalaVersion.value force(),
+  "org.scala-lang" % "scalap" % scalaVersion.value force()
+)
+val saveClasspathTask = TaskKey[Unit]("saveClasspath", "Save the classpath to a file")
+saveClasspathTask := {
+  val managed = (managedClasspath in Runtime).value.map(_.data.getAbsolutePath)
+  val unmanaged = (unmanagedClasspath in Runtime).value.map(_.data.getAbsolutePath)
+  val out = file("%(classpath_file)")
+  write(out, (unmanaged ++ managed).mkString(File.pathSeparator))
+}"""
+            replace = {"scala_version": self.conf['scala-version'], "version": self.version, "classpath_file": self.classpath_file}
+            for k in replace.keys():
+                build_sbt = build_sbt.replace("%("+k+")", replace[k])
+            project_dir = "{}/project".format(self.classpath_dir)
+            if not os.path.exists(project_dir): os.mkdir(project_dir)
+            self.write_file("{}/build.sbt".format(self.classpath_dir), build_sbt)
+            self.write_file("{}/project/build.properties".format(self.classpath_dir),
+                    "sbt.version=0.13.8")
+            cwd = os.getcwd()
+            os.chdir(self.classpath_dir)
+            self.vim.command("!sbt -batch saveClasspath")
+            os.chdir(cwd)
+    def read_file(self, path):
+        f = open(path)
+        result = f.read()
+        f.close()
+        return result
+    def write_file(self, path, contents):
+        f = open(path, "w")
+        result = f.write(contents)
+        f.close()
+        return result
+    def is_running(self):
+        port_path = self.conf_path + "_cache/http"
+        if not os.path.exists(port_path):
+            return False
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect("127.0.0.1", int(self.read_file(port_path))).close()
+        except:
+            return False
+        return True
+    def setup(self):
+        if self.classpath == None:
+            if not self.generating_classpath:
+                self.generate_classpath()
+            if os.path.exists(self.classpath_file):
+                self.classpath = "{}:{}/lib/tools.jar".format(
+                        self.read_file(self.classpath_file),
+                        self.conf['java-home'])
+    def run(self):
+        if self.conf != None and not self.is_running():
+            if not os.path.exists(self.conf['cache-dir']):
+                os.mkdir(self.conf['cache-dir'])
+            self.log_file = open(self.conf_path + '_cache/server.log', 'w')
+            args = [a for a in [self.conf['java-home'] + "/bin/java"] +
+                    self.conf['java-flags'].split(" ") if a != ""] + [
+                            "-cp",  self.classpath,
+                            "-Densime.config=" + self.conf_path,
+                            "org.ensime.server.Server"]
+            self.process = subprocess.Popen(args, stdout=self.log_file,
+                    stderr=subprocess.STDOUT)
+            self.write_file(self.conf_path + "_cache/server.pid",
+                str(self.process.pid))
+        return self
+    def wait(self):
+        self.process.wait()
+    def stop(self):
+        os.kill(self.process.pid, signal.SIGTERM)
+        self.log_file.close()
 
 class EnsimeClient(object):
     def log(self, what):
@@ -18,7 +131,7 @@ class EnsimeClient(object):
         if os.path.isdir(self.ensime_cache):
             log_dir = self.ensime_cache
         f = open(log_dir + "ensime-vim.log", "a")
-        f.write("{}: {}\n".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"), what))
+        f.write("{}: {}\n".format(time.strftime("%Y-%m-%d %H:%M:%S"), what))
         f.close()
     def unqueue_poll(self):
         while True:
@@ -27,11 +140,7 @@ class EnsimeClient(object):
                 self.queue.put(result)
             time.sleep(1)
     def __init__(self, vim, config_path):
-        self.config_path = os.path.abspath(config_path)
-
-        project_root = os.path.dirname(self.config_path)
-
-        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
+        self.ensime_cache = ".ensime_cache/"
         self.log("__init__: in")
         self.callId = 0
         self.browse = False
@@ -54,16 +163,14 @@ class EnsimeClient(object):
         subprocess.Popen(binary.split())
     def start_ensime_launcher(self):
         if self.ensime == None:
-            self.ensime = EnsimeLauncher(self.config_path, self.vim)
+            self.ensime = EnsimeLauncher(".ensime", self.vim)
         if self.ensime.classpath != None:
-            self.log("starting up ensime")
             self.message("ensime startup")
             self.ensime.run()
             return True
         else:
-           self.log("launching EnsimeLauncher.setup()")
-           self.ensime.setup()
-           self.log("done launching EnsimeLauncher.setup()")
+            self.message("ensime setup, generating classpath may take a while the first time...")
+            self.ensime.setup()
         return False
     def stop_ensime_launcher(self):
         self.ensime.stop()
@@ -74,12 +181,12 @@ class EnsimeClient(object):
     # @neovim.autocmd('VimLeave', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def teardown(self, filename):
         self.log("teardown: in")
-        if os.path.exists(self.config_path) and not self.no_teardown:
+        if os.path.exists(".ensime") and not self.no_teardown:
             self.stop_ensime_launcher()
             #self.ensime_bridge("stop")
     def setup(self):
         self.log("setup: in")
-        if os.path.exists(self.config_path) and not self.is_setup:
+        if os.path.exists(".ensime") and not self.is_setup:
             if self.start_ensime_launcher():
                 self.vim.command("set completefunc=EnCompleteFunc")
                 self.is_setup = True
@@ -282,7 +389,6 @@ class EnsimeClient(object):
             self.suggests = None
             return result
 
-@neovim.plugin
 class Ensime(object):
     def __init__(self, vim):
         self.vim = vim
@@ -337,56 +443,45 @@ class Ensime(object):
         for c in self.clients.values():
             c.update()
 
-    @neovim.command('EnNoTeardown', range='', nargs='*', sync=True)
     def command_en_no_teardown(self, _):
         self.no_teardown = True
 
-    @neovim.command('EnTypeCheck', range='', nargs='*', sync=True)
     def command_en_type_check(self, _):
         self.with_current_client(lambda c: c.type_check())
 
-    @neovim.command('EnType', range='', nargs='*', sync=True)
     def command_en_type(self, _):
         self.with_current_client(lambda c:
                 c.type_at_point(self.current_offset_range()))
 
-    @neovim.command('EnDeclaration', range='', nargs='*', sync=True)
     def command_en_declaration(self, _):
         self.with_current_client(lambda c:
                 c.symbol_at_point(self.current_offset_range()))
 
-    @neovim.command('EnSymbol', range='', nargs='*', sync=True)
     def command_en_symbol(self, _):
         self.command_en_declaration()
 
-    @neovim.command('EnDocUri', range='', nargs='*', sync=True)
     def command_en_doc_uri(self, _):
         # todo
         None
 
-    @neovim.command('EnDocBrowse', range='', nargs='*', sync=True)
     def command_en_doc_browse(self, _):
         # todo
         None
 
-    @neovim.autocmd('VimLeave', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def autocmd_vim_leave(self, _):
         if not self.no_teardown:
             self.teardown_all()
 
-    @neovim.autocmd('BufWritePost', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def autocmd_buf_write_post(self, _):
         self.command_en_type_check()
 
-    @neovim.autocmd('CursorHold', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def autocmd_cursor_hold(self, _):
         self.update()
 
-    @neovim.autocmd('CursorMoved', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def autocmd_cursor_moved(self, _):
         self.update()
 
-    @neovim.function('EnCompleteFunc', sync=True)
     def function_en_complete_func(self, args):
         self.with_current_client(lambda c: c.complete_func(args))
 
+ensime_plugin = Ensime(vim)
