@@ -1,6 +1,6 @@
 if has('nvim')
   finish
-fi
+endif
 augroup ensime
     autocmd!
     autocmd VimLeave * call ensime#autocmd_vim_leave('', '')

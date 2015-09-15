@@ -1,6 +1,6 @@
 if has('nvim')
   finish
-fi
+endif
 execute 'pyfile' expand('<sfile>:p').'.py'
 
 function! ensime#teardown_all(arg0, arg1) abort
