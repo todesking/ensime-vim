@@ -46,6 +46,7 @@ class EnsimeClient(object):
 
         self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.log("__init__: in")
+        self.log("config_path: {}".format(self.config_path))
         self.callId = 0
         self.browse = False
         self.vim = vim

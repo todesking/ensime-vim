@@ -1,3 +1,16 @@
+def EnsimeInitPath():
+    path = os.path.abspath(__file__)
+    if path.endswith('/rplugin/python/ensime.py'): # nvim rplugin
+        sys.path.append(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(path))), "ensime_launcher"))
+    elif path.endswith('/autoload/ensime.vim.py'): # vim plugin
+        sys.path.append(os.path.join(
+            os.path.dirname(os.path.dirname(path)), "ensime_launcher"))
+
+EnsimeInitPath()
+
+print(os.sys.path)
+
 import vim
 import json
 import socket
@@ -140,8 +153,13 @@ class EnsimeClient(object):
                 self.queue.put(result)
             time.sleep(1)
     def __init__(self, vim, config_path):
-        self.ensime_cache = ".ensime_cache/"
+        self.config_path = os.path.abspath(config_path)
+
+        project_root = os.path.dirname(self.config_path)
+
+        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.log("__init__: in")
+        self.log("config_path: {}".format(self.config_path))
         self.callId = 0
         self.browse = False
         self.vim = vim
@@ -163,7 +181,7 @@ class EnsimeClient(object):
         subprocess.Popen(binary.split())
     def start_ensime_launcher(self):
         if self.ensime == None:
-            self.ensime = EnsimeLauncher(".ensime", self.vim)
+            self.ensime = EnsimeLauncher(self.config_path, self.vim)
         if self.ensime.classpath != None:
             self.message("ensime startup")
             self.ensime.run()
@@ -181,12 +199,12 @@ class EnsimeClient(object):
     # @neovim.autocmd('VimLeave', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def teardown(self, filename):
         self.log("teardown: in")
-        if os.path.exists(".ensime") and not self.no_teardown:
+        if os.path.exists(self.config_path) and not self.no_teardown:
             self.stop_ensime_launcher()
             #self.ensime_bridge("stop")
     def setup(self):
         self.log("setup: in")
-        if os.path.exists(".ensime") and not self.is_setup:
+        if os.path.exists(self.config_path) and not self.is_setup:
             if self.start_ensime_launcher():
                 self.vim.command("set completefunc=EnCompleteFunc")
                 self.is_setup = True

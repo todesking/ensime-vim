@@ -1,4 +1,35 @@
+if has('nvim')
+  finish
+fi
 execute 'pyfile' expand('<sfile>:p').'.py'
+
+function! ensime#teardown_all(arg0, arg1) abort
+    return s:call_plugin('teardown_all', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#current_client(arg0, arg1) abort
+    return s:call_plugin('current_client', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#client_for(arg0, arg1) abort
+    return s:call_plugin('client_for', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#find_config_path(arg0, arg1) abort
+    return s:call_plugin('find_config_path', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#with_current_client(arg0, arg1) abort
+    return s:call_plugin('with_current_client', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#current_offset_range(arg0, arg1) abort
+    return s:call_plugin('current_offset_range', [a:arg0, a:arg1])
+endfunction
+
+function! ensime#update(arg0, arg1) abort
+    return s:call_plugin('update', [a:arg0, a:arg1])
+endfunction
 
 function! ensime#function_en_complete_func(arg0, arg1) abort
     return s:call_plugin('function_en_complete_func', [a:arg0, a:arg1])
