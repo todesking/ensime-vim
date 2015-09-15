@@ -9,8 +9,6 @@ def EnsimeInitPath():
 
 EnsimeInitPath()
 
-print(os.sys.path)
-
 import neovim
 import json
 import os
