@@ -51,7 +51,6 @@ class EnsimeClient(object):
         self.browse = False
         self.vim = vim
         self.matches = []
-        self.vim.command("highlight EnError ctermbg=red")
         self.is_setup = False
         self.suggests = None
         self.ensime = None
