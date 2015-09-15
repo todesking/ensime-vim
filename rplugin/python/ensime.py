@@ -1,3 +1,16 @@
+def EnsimeInitPath():
+    path = os.path.abspath(__file__)
+    if path.endswith('/rplugin/python/ensime.py'): # nvim rplugin
+        sys.path.append(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(path))), "ensime_launcher"))
+    elif path.endswith('/autoload/ensime.vim.py'): # vim plugin
+        sys.path.append(os.path.join(
+            os.path.dirname(os.path.dirname(path)), "ensime_launcher"))
+
+EnsimeInitPath()
+
+print(os.sys.path)
+
 import neovim
 import json
 import os
