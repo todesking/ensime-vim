@@ -347,13 +347,13 @@ class Ensime(object):
 
     def update(self):
         for c in self.clients.values():
-            c.update()
+            c.unqueue(None)
 
     def command_en_no_teardown(self, _):
         self.no_teardown = True
 
     def command_en_type_check(self, _):
-        self.with_current_client(lambda c: c.type_check())
+        self.with_current_client(lambda c: c.type_check(None))
 
     def command_en_type(self, _):
         self.with_current_client(lambda c:

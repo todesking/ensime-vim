@@ -308,7 +308,7 @@ class Ensime(object):
 
     def teardown_all(self):
         for c in self.clients.values():
-            c.teardown()
+            c.teardown(None)
 
     def current_client(self):
         config_path = self.find_config_path(vim.eval("expand('%:p')"))
@@ -348,7 +348,7 @@ class Ensime(object):
 
     def update(self):
         for c in self.clients.values():
-            c.update()
+            c.unqueue(None)
 
     @neovim.command('EnNoTeardown', range='', nargs='*', sync=True)
     def command_en_no_teardown(self, _):
@@ -356,7 +356,7 @@ class Ensime(object):
 
     @neovim.command('EnTypeCheck', range='', nargs='*', sync=True)
     def command_en_type_check(self, _):
-        self.with_current_client(lambda c: c.type_check())
+        self.with_current_client(lambda c: c.type_check(None))
 
     @neovim.command('EnType', range='', nargs='*', sync=True)
     def command_en_type(self, _):
