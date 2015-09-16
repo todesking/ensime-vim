@@ -1,6 +1,3 @@
-if has('nvim')
-  finish
-endif
 execute 'pyfile' expand('<sfile>:p').'.py'
 
 function! ensime#teardown_all(arg0, arg1) abort
@@ -80,10 +77,14 @@ function! ensime#command_en_doc_browse(arg0, arg1) abort
 endfunction
 
 function! s:call_plugin(method_name, args) abort
+    " TODO: support nvim rpc
+    if has('nvim')
+      throw 'Call rplugin from vimscript: not supported yet'
+    endif
     unlet! g:__error
     python <<PY
 try:
-  r = getattr(ensime_plugin, vim.eval('a:method_name'))(vim.eval('a:args'))
+  r = getattr(ensime_plugin, vim.eval('a:method_name'))(*vim.eval('a:args'))
   vim.command('let g:__result = ' + json.dumps(([] if r == None else r)))
 except:
   vim.command('let g:__error = ' + json.dumps(str(sys.exc_info()[0]) + ':' + str(sys.exc_info()[1])))

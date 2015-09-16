@@ -1,17 +1,19 @@
+import os
+import inspect
+
 def EnsimeInitPath():
-    path = os.path.abspath(__file__)
+    path = os.path.abspath(inspect.getfile(inspect.currentframe()))
     if path.endswith('/rplugin/python/ensime.py'): # nvim rplugin
         sys.path.append(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(path))), "ensime_launcher"))
+            os.path.dirname(os.path.dirname(os.path.dirname(path)))))
     elif path.endswith('/autoload/ensime.vim.py'): # vim plugin
         sys.path.append(os.path.join(
-            os.path.dirname(os.path.dirname(path)), "ensime_launcher"))
+            os.path.dirname(os.path.dirname(path))))
 
 EnsimeInitPath()
 
 import vim
 import json
-import os
 import subprocess
 import re
 import logging
@@ -310,38 +312,38 @@ class Ensime(object):
     def current_client(self):
         config_path = self.find_config_path(vim.eval("expand('%:p')"))
         if config_path == None:
-            None
+            return None
         else:
-            self.client_for(config_path)
+            return self.client_for(config_path)
 
     def client_for(self, config_path):
         abs_path = os.path.abspath(config_path)
         if abs_path in self.clients:
-            self.clients[abs_path]
+            return self.clients[abs_path]
         else:
             self.clients[abs_path] = EnsimeClient(vim, config_path)
-            self.clients[abs_path]
+            return self.clients[abs_path]
 
     def find_config_path(self, path):
         abs_path = os.path.abspath(path)
         config_path = os.path.join(abs_path, '.ensime')
 
         if abs_path == os.path.abspath('/'):
-            None
+            return None
         elif os.path.isfile(config_path):
-            config_path
+            return config_path
         else:
-            self.find_config_path(os.path.dirname(abs_path))
+            return self.find_config_path(os.path.dirname(abs_path))
 
     def with_current_client(self, proc):
         c = self.current_client()
         if c == None:
             self.__message__("Ensime server not loaded for this project.")
         else:
-            proc(c)
+            return proc(c)
 
     def current_offset_range(self):
-        ['', 0, 0]
+        return ['', 0, 0]
 
     def update(self):
         for c in self.clients.values():
