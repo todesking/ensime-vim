@@ -339,7 +339,7 @@ class Ensime(object):
     def with_current_client(self, proc):
         c = self.current_client()
         if c == None:
-            self.__message__("Ensime server not loaded for this project.")
+            self.__message__("Ensime config not found for this project")
         else:
             return proc(c)
 
