@@ -1,79 +1,79 @@
 execute 'pyfile' expand('<sfile>:p').'.py'
 
-function! ensime#teardown_all(arg0, arg1) abort
-    return s:call_plugin('teardown_all', [a:arg0, a:arg1])
+function! ensime#teardown_all() abort
+    return s:call_plugin('teardown_all', [])
 endfunction
 
-function! ensime#current_client(arg0, arg1) abort
-    return s:call_plugin('current_client', [a:arg0, a:arg1])
+function! ensime#current_client() abort
+    return s:call_plugin('current_client', [])
 endfunction
 
-function! ensime#client_for(arg0, arg1) abort
-    return s:call_plugin('client_for', [a:arg0, a:arg1])
+function! ensime#client_for(config_path) abort
+    return s:call_plugin('client_for', [a:config_path])
 endfunction
 
-function! ensime#find_config_path(arg0, arg1) abort
-    return s:call_plugin('find_config_path', [a:arg0, a:arg1])
+function! ensime#find_config_path(path) abort
+    return s:call_plugin('find_config_path', [a:path])
 endfunction
 
-function! ensime#with_current_client(arg0, arg1) abort
-    return s:call_plugin('with_current_client', [a:arg0, a:arg1])
+function! ensime#with_current_client(proc) abort
+    return s:call_plugin('with_current_client', [a:proc])
 endfunction
 
-function! ensime#current_offset_range(arg0, arg1) abort
-    return s:call_plugin('current_offset_range', [a:arg0, a:arg1])
+function! ensime#current_offset_range() abort
+    return s:call_plugin('current_offset_range', [])
 endfunction
 
-function! ensime#update(arg0, arg1) abort
-    return s:call_plugin('update', [a:arg0, a:arg1])
+function! ensime#update() abort
+    return s:call_plugin('update', [])
 endfunction
 
-function! ensime#function_en_complete_func(arg0, arg1) abort
-    return s:call_plugin('function_en_complete_func', [a:arg0, a:arg1])
+function! ensime#function_en_complete_func(args) abort
+    return s:call_plugin('function_en_complete_func', [a:args])
 endfunction
 
-function! ensime#autocmd_vim_leave(arg0, arg1) abort
-    return s:call_plugin('autocmd_vim_leave', [a:arg0, a:arg1])
+function! ensime#autocmd_vim_leave(_) abort
+    return s:call_plugin('autocmd_vim_leave', [a:_])
 endfunction
 
-function! ensime#autocmd_buf_write_post(arg0, arg1) abort
-    return s:call_plugin('autocmd_buf_write_post', [a:arg0, a:arg1])
+function! ensime#autocmd_buf_write_post(_) abort
+    return s:call_plugin('autocmd_buf_write_post', [a:_])
 endfunction
 
-function! ensime#autocmd_cursor_hold(arg0, arg1) abort
-    return s:call_plugin('autocmd_cursor_hold', [a:arg0, a:arg1])
+function! ensime#autocmd_cursor_hold(_) abort
+    return s:call_plugin('autocmd_cursor_hold', [a:_])
 endfunction
 
-function! ensime#autocmd_cursor_moved(arg0, arg1) abort
-    return s:call_plugin('autocmd_cursor_moved', [a:arg0, a:arg1])
+function! ensime#autocmd_cursor_moved(_) abort
+    return s:call_plugin('autocmd_cursor_moved', [a:_])
 endfunction
 
-function! ensime#command_en_no_teardown(arg0, arg1) abort
-    return s:call_plugin('command_en_no_teardown', [a:arg0, a:arg1])
+function! ensime#command_en_no_teardown(_) abort
+    return s:call_plugin('command_en_no_teardown', [a:_])
 endfunction
 
-function! ensime#command_en_type_check(arg0, arg1) abort
-    return s:call_plugin('command_en_type_check', [a:arg0, a:arg1])
+function! ensime#command_en_type_check(_) abort
+    return s:call_plugin('command_en_type_check', [a:_])
 endfunction
 
-function! ensime#command_en_type(arg0, arg1) abort
-    return s:call_plugin('command_en_type', [a:arg0, a:arg1])
+function! ensime#command_en_type(_) abort
+    return s:call_plugin('command_en_type', [a:_])
 endfunction
 
-function! ensime#command_en_declaration(arg0, arg1) abort
-    return s:call_plugin('command_en_declaration', [a:arg0, a:arg1])
+function! ensime#command_en_declaration(_) abort
+    return s:call_plugin('command_en_declaration', [a:_])
 endfunction
 
-function! ensime#command_en_symbol(arg0, arg1) abort
-    return s:call_plugin('command_en_symbol', [a:arg0, a:arg1])
+function! ensime#command_en_symbol(_) abort
+    return s:call_plugin('command_en_symbol', [a:_])
 endfunction
 
-function! ensime#command_en_doc_uri(arg0, arg1) abort
-    return s:call_plugin('command_en_doc_uri', [a:arg0, a:arg1])
+function! ensime#command_en_doc_uri(_) abort
+    return s:call_plugin('command_en_doc_uri', [a:_])
 endfunction
 
-function! ensime#command_en_doc_browse(arg0, arg1) abort
-    return s:call_plugin('command_en_doc_browse', [a:arg0, a:arg1])
+function! ensime#command_en_doc_browse(_) abort
+    return s:call_plugin('command_en_doc_browse', [a:_])
 endfunction
 
 function! s:call_plugin(method_name, args) abort
