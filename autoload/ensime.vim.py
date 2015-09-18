@@ -42,11 +42,11 @@ class EnsimeClient(object):
     def __init__(self, vim, config_path):
         self.config_path = os.path.abspath(config_path)
 
-        project_root = os.path.dirname(self.config_path)
-
-        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.log("__init__: in")
         self.log("config_path: {}".format(self.config_path))
+
+        project_root = os.path.dirname(self.config_path)
+        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.callId = 0
         self.browse = False
         self.vim = vim
@@ -321,8 +321,11 @@ class Ensime(object):
         if abs_path in self.clients:
             return self.clients[abs_path]
         else:
-            self.clients[abs_path] = EnsimeClient(vim, config_path)
-            return self.clients[abs_path]
+            client = EnsimeClient(vim, config_path)
+            self.clients[abs_path] = client
+            self.__message("Starting up ensime server...")
+            client.setup()
+            return client
 
     def find_config_path(self, path):
         abs_path = os.path.abspath(path)
