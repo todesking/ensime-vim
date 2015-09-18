@@ -42,11 +42,11 @@ class EnsimeClient(object):
     def __init__(self, vim, config_path):
         self.config_path = os.path.abspath(config_path)
 
-        project_root = os.path.dirname(self.config_path)
-
-        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.log("__init__: in")
         self.log("config_path: {}".format(self.config_path))
+
+        project_root = os.path.dirname(self.config_path)
+        self.ensime_cache = os.path.join(project_root, ".ensime_cache")
         self.callId = 0
         self.browse = False
         self.vim = vim
@@ -67,7 +67,7 @@ class EnsimeClient(object):
         subprocess.Popen(binary.split())
     def start_ensime_launcher(self):
         if self.ensime == None:
-            self.ensime = EnsimeLauncher(self.config_path, self.vim)
+            self.ensime = EnsimeLauncher(self.config_path)
         if self.ensime.classpath != None:
             self.log("starting up ensime")
             self.message("ensime startup")
@@ -302,7 +302,7 @@ class Ensime(object):
         self.no_teardown = False
         self.clients = {} # .ensime path => ensime server process
 
-    def __message__(self, m):
+    def __message(self, m):
         # TODO: escape m
         self.vim.command("echo '{}'".format(m))
 
@@ -322,8 +322,11 @@ class Ensime(object):
         if abs_path in self.clients:
             return self.clients[abs_path]
         else:
-            self.clients[abs_path] = EnsimeClient(vim, config_path)
-            return self.clients[abs_path]
+            client = EnsimeClient(vim, config_path)
+            self.clients[abs_path] = client
+            self.__message("Starting up ensime server...")
+            client.setup()
+            return client
 
     def find_config_path(self, path):
         abs_path = os.path.abspath(path)
@@ -339,7 +342,7 @@ class Ensime(object):
     def with_current_client(self, proc):
         c = self.current_client()
         if c == None:
-            self.__message__("Ensime config not found for this project")
+            self.__message("Ensime config not found for this project")
         else:
             return proc(c)
 

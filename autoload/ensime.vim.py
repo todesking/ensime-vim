@@ -67,7 +67,7 @@ class EnsimeClient(object):
         subprocess.Popen(binary.split())
     def start_ensime_launcher(self):
         if self.ensime == None:
-            self.ensime = EnsimeLauncher(self.config_path, self.vim)
+            self.ensime = EnsimeLauncher(self.config_path)
         if self.ensime.classpath != None:
             self.log("starting up ensime")
             self.message("ensime startup")
@@ -301,13 +301,13 @@ class Ensime(object):
         self.no_teardown = False
         self.clients = {} # .ensime path => ensime server process
 
-    def __message__(self, m):
+    def __message(self, m):
         # TODO: escape m
         self.vim.command("echo '{}'".format(m))
 
     def teardown_all(self):
         for c in self.clients.values():
-            c.teardown()
+            c.teardown(None)
 
     def current_client(self):
         config_path = self.find_config_path(vim.eval("expand('%:p')"))
@@ -338,7 +338,7 @@ class Ensime(object):
     def with_current_client(self, proc):
         c = self.current_client()
         if c == None:
-            self.__message__("Ensime server not loaded for this project.")
+            self.__message("Ensime config not found for this project")
         else:
             return proc(c)
 
