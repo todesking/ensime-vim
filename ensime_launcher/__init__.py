@@ -38,15 +38,19 @@ class EnsimeProcess:
         self.__stopped_manually = True
 
     def aborted(self):
-        return not (self.__stopped_manually | self.process.poll() == None)
+        return not (self.__stopped_manually or self.is_running())
+
+    def is_running(self):
+        return self.process.poll() == None
 
     def is_ready(self):
-        if self.process.poll() != None:
+        if not self.is_running():
             return False
         try:
             port = self.http_port()
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect("127.0.0.1", port).close()
+            s.connect(("127.0.0.1", port))
+            s.close()
             return True
         except:
             return False
@@ -78,7 +82,7 @@ class EnsimeLauncher:
         classpath_file = os.path.join(project_dir, "classpath")
         if not os.path.exists(classpath_file):
             self.generate_classpath(scala_version, classpath_file)
-        return "{}:{}/tools.jar".format(Util.read_file(classpath_file), java_home)
+        return "{}:{}/lib/tools.jar".format(Util.read_file(classpath_file), java_home)
 
     def start_process(self, conf_path, classpath, cache_dir, java_home, java_flags):
         Util.mkdir_p(cache_dir)
@@ -87,6 +91,7 @@ class EnsimeLauncher:
         null = open("/dev/null", "r")
         args = (
             [os.path.join(java_home, "bin", "java")] +
+            ["-cp", classpath] +
             [a for a in java_flags.split(" ") if a != ""] +
             ["-Densime.config={}".format(conf_path), "org.ensime.server.Server"])
         process = subprocess.Popen(
