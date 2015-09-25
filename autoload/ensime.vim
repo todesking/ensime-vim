@@ -2,6 +2,10 @@ if !has('nvim')
     execute 'pyfile' expand('<sfile>:p').'.py'
 endif
 
+function! ensime#auto_start_enabled() abort
+    return s:call_plugin('auto_start_enabled', [])
+endfunction
+
 function! ensime#client_keys() abort
     return s:call_plugin('client_keys', [])
 endfunction
@@ -22,12 +26,16 @@ function! ensime#client_for(config_path, create) abort
     return s:call_plugin('client_for', [a:config_path, a:create])
 endfunction
 
+function! ensime#current_config_path() abort
+    return s:call_plugin('current_config_path', [])
+endfunction
+
 function! ensime#find_config_path(path) abort
     return s:call_plugin('find_config_path', [a:path])
 endfunction
 
-function! ensime#with_current_client(proc) abort
-    return s:call_plugin('with_current_client', [a:proc])
+function! ensime#with_current_client(proc, warn_if_unavailable) abort
+    return s:call_plugin('with_current_client', [a:proc, a:warn_if_unavailable])
 endfunction
 
 function! ensime#fun_en_complete_func(args) abort
@@ -48,6 +56,10 @@ endfunction
 
 function! ensime#au_cursor_moved(filename) abort
     return s:call_plugin('au_cursor_moved', [a:filename])
+endfunction
+
+function! ensime#com_en_start(args, range) abort
+    return s:call_plugin('com_en_start', [a:args, a:range])
 endfunction
 
 function! ensime#com_en_no_teardown(args, range) abort

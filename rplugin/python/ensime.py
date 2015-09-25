@@ -307,11 +307,14 @@ class Ensime:
         # TODO: escape m
         self.vim.command("echo '{}'".format(m))
 
+    def auto_start_enabled(self):
+        return int(self.vim.eval("get(g:, 'ensime_auto_start', 1)")) == 1
+
     def client_keys(self):
         return self.clients.keys()
 
     def client_status(self, config_path):
-        c = self.client_for(config_path)
+        c = self.client_for(config_path, False)
         if c == None or c.ensime == None:
             return 'unloaded'
         elif c.ensime.is_ready():
@@ -328,13 +331,13 @@ class Ensime:
             c.teardown(None)
 
     def current_client(self):
-        config_path = self.find_config_path(self.vim.eval("expand('%:p')"))
+        config_path = self.current_config_path()
         if config_path == None:
             return None
         else:
-            return self.client_for(config_path)
+            return self.client_for(config_path, self.auto_start_enabled())
 
-    def client_for(self, config_path, create = True):
+    def client_for(self, config_path, create):
         abs_path = os.path.abspath(config_path)
         if abs_path in self.clients:
             return self.clients[abs_path]
@@ -347,6 +350,9 @@ class Ensime:
         else:
             return None
 
+    def current_config_path(self):
+        return self.find_config_path(self.vim.eval("expand('%:p')"))
+
     def find_config_path(self, path):
         abs_path = os.path.abspath(path)
         config_path = os.path.join(abs_path, '.ensime')
@@ -358,40 +364,55 @@ class Ensime:
         else:
             return self.find_config_path(os.path.dirname(abs_path))
 
-    def with_current_client(self, proc):
+    def with_current_client(self, proc, warn_if_unavailable):
         c = self.current_client()
         if c == None:
-            self.__message("Ensime config not found for this project")
+            if warn_if_unavailable:
+                if self.auto_start_enabled():
+                    self.__message("Ensime config not found for this project")
+                else:
+                    self.__message("Ensime not started")
         else:
             return proc(c)
 
+    @neovim.command('EnStart', nargs='0', sync=True)
+    def com_en_start(self):
+        path = self.current_config_path()
+        if path == None:
+            self.__message("Ensime config not found")
+            return
+        c = self.client_for(path, create = True)
+        if c == None:
+            self.__message("Ensime startup failed")
+            return
+
     @neovim.command('EnNoTeardown', range='', nargs='*', sync=True)
     def com_en_no_teardown(self, args, range = None):
-        self.with_current_client(lambda c: c.do_no_teardown(None, None))
+        self.with_current_client(lambda c: c.do_no_teardown(None, None), True)
 
     @neovim.command('EnTypeCheck', range='', nargs='*', sync=True)
     def com_en_type_check(self, args, range = None):
-        self.with_current_client(lambda c: c.type_check_cmd(None))
+        self.with_current_client(lambda c: c.type_check_cmd(None), True)
 
     @neovim.command('EnType', range='', nargs='*', sync=True)
     def com_en_type(self, args, range = None):
-        self.with_current_client(lambda c: c.type(None))
+        self.with_current_client(lambda c: c.type(None), True)
 
     @neovim.command('EnDeclaration', range='', nargs='*', sync=True)
     def com_en_declaration(self, args, range = None):
-        self.with_current_client(lambda c: c.open_declaration(args, range))
+        self.with_current_client(lambda c: c.open_declaration(args, range), True)
 
     @neovim.command('EnSymbol', range='', nargs='*', sync=True)
     def com_en_symbol(self, args, range = None):
-        self.with_current_client(lambda c: c.symbol(args, range))
+        self.with_current_client(lambda c: c.symbol(args, range), True)
 
     @neovim.command('EnDocUri', range='', nargs='*', sync=True)
     def com_en_doc_uri(self, args, range = None):
-        self.with_current_client(lambda c: c.doc_uri(args, range))
+        self.with_current_client(lambda c: c.doc_uri(args, range), True)
 
     @neovim.command('EnDocBrowse', range='', nargs='*', sync=True)
     def com_en_doc_browse(self, args, range = None):
-        self.with_current_client(lambda c: c.doc_browse(args, range))
+        self.with_current_client(lambda c: c.doc_browse(args, range), True)
 
     @neovim.command('EnClients', range='', nargs='0', sync=True)
     def com_en_clients(self, args, range = None):
@@ -404,19 +425,19 @@ class Ensime:
 
     @neovim.autocmd('BufWritePost', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def au_buf_write_post(self, filename):
-        self.with_current_client(lambda c: c.type_check(filename))
+        self.with_current_client(lambda c: c.type_check(filename), False)
 
     @neovim.autocmd('CursorHold', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def au_cursor_hold(self, filename):
-        self.with_current_client(lambda c: c.on_cursor_hold(filename))
+        self.with_current_client(lambda c: c.on_cursor_hold(filename), False)
 
     @neovim.autocmd('CursorMoved', pattern='*.scala', eval='expand("<afile>")', sync=True)
     def au_cursor_moved(self, filename):
-        self.with_current_client(lambda c: c.cursor_moved(filename))
+        self.with_current_client(lambda c: c.cursor_moved(filename), False)
 
     @neovim.function('EnCompleteFunc', sync=True)
     def fun_en_complete_func(self, args):
         if self.is_scala_file():
-            return self.with_current_client(lambda c: c.complete_func(args))
+            return self.with_current_client(lambda c: c.complete_func(args), True)
         else:
             return []
